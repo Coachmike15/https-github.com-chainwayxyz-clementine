@@ -347,6 +347,25 @@ pub fn create_spv(
         ));
     }
 
+    if (payment_block_height - genesis_block_height) as usize >= block_hash_bytes.len() {
+        return Err(eyre!(
+            "Block hash bytes length ({}) is insufficient for payment block height {} given genesis block height {}",
+            block_hash_bytes.len(),
+            payment_block_height,
+            genesis_block_height
+        ));
+    }
+    // Ensure the supplied block hash matches the payment block's actual hash
+    let expected_block_hash = bitcoin::hashes::Hash::to_byte_array(&payment_block.header.block_hash());
+    let mmr_leaf_hash = block_hash_bytes[(payment_block_height - genesis_block_height) as usize];
+    if expected_block_hash != mmr_leaf_hash {
+        return Err(eyre!(
+            "Mismatch between payment block hash and the corresponding hash in block_hash_bytes: expected {:?}, found {:?}",
+            expected_block_hash,
+            mmr_leaf_hash
+        ));
+    }
+
     let mut mmr_native = MMRNative::new();
     for block_hash in block_hash_bytes {
         mmr_native.append(*block_hash);
